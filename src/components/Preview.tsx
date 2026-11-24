@@ -1,30 +1,29 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { displayableBlob } from '@/lib/thumbs';
+import { getCachedThumb, getPreviewUrl } from '@/lib/thumbs';
 import { formatBytes } from '@/lib/files';
 import { CullStatus, PhotoGroup } from '@/lib/types';
 import { STATUS_BADGE, STATUS_LABEL } from './statusStyle';
 import ZoomImage from './ZoomImage';
 
-/** Full-size preview. Only ONE full image is held in memory; its object URL is revoked on change/close. */
+/** Full-size preview. Shows the thumbnail instantly, then swaps to the full image (cached + prefetched in lib/thumbs). */
 export default function Preview({ group, status, index, total, onClose }: { group: PhotoGroup; status: CullStatus; index: number; total: number; onClose: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const placeholder = getCachedThumb(group.preview.name);
+
   useEffect(() => {
     let alive = true;
-    let created: string | null = null;
-    setUrl(null);
     setError(null);
-    displayableBlob(group.preview)
-      .then((b) => {
+    getPreviewUrl(group.preview)
+      .then((u) => {
         if (!alive) return;
-        if (!b) { setError('No embedded preview in this RAW file.'); return; }
-        created = URL.createObjectURL(b);
-        setUrl(created);
+        if (!u) setError('No embedded preview in this RAW file.');
+        setUrl(u);
       })
       .catch((e) => alive && setError(e instanceof DOMException && e.name === 'NotFoundError' ? 'File not found — SD card removed?' : `Cannot read file: ${(e as Error).message}`));
-    return () => { alive = false; if (created) URL.revokeObjectURL(created); };
+    return () => { alive = false; setUrl(null); };
   }, [group]);
 
   return (
@@ -43,6 +42,13 @@ export default function Preview({ group, status, index, total, onClose }: { grou
       <div className="flex min-h-0 flex-1 items-center justify-center">
         {error ? <p className="text-red-400">{error}</p>
           : url ? <ZoomImage src={url} alt={group.baseName} />
+          : placeholder ? (
+            <div className="relative flex h-full w-full items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={placeholder} alt="" className="h-full w-full object-contain blur-[1px]" />
+              <span className="absolute right-3 top-3 h-5 w-5 animate-spin rounded-full border-2 border-neutral-500 border-t-neutral-100" />
+            </div>
+          )
           : <span className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-200" />}
       </div>
       <div className="pb-2 text-center text-xs text-neutral-500">1 Keep · 2 Maybe · X Reject · ←/→ Navigate · Wheel/+/− zoom · Z or double-click 100% · 0 fit · drag to pan · Ctrl+Z Undo · Space/Esc Close</div>

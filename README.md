@@ -37,7 +37,8 @@ src/components/      Home, Workspace, VirtualGrid, Thumb, Preview, Summary
 ```
 
 - **Pairing:** files that share a base name, case-insensitive (`IMG_1001.CR3` + `IMG_1001.JPG`), form one *group*. Status is stored per group, so a pair always changes together and is deleted together. The JPEG is used as the preview. A RAW-only shot uses the JPEG preview embedded in the RAW file.
-- **Performance:** a windowed grid mounts only the visible rows. Thumbnails are decoded with `createImageBitmap` at 320 px. Only one full-size image (the preview) is held at a time, and its URL is revoked when you move on or close it.
+- **Performance:** a windowed grid mounts only the visible rows. Thumbnails use the camera's **EXIF thumbnail**, so only the first 128 KB of each JPEG is read instead of the whole 10+ MB file. RAW files are scanned in growing windows (256 KB → 2 MB → …) for their embedded JPEG. A full decode is used only when neither exists. Full previews show the thumbnail instantly, are prefetched (selected photo, plus next and previous while the preview is open), and are kept in an LRU of 4 object URLs that are revoked on eviction.
+- `npm run bench` measures thumbnail and preview speed with 40 × 12 MB, 24MP JPEGs. Before → after: all visible thumbnails 4070 ms → ~190 ms; next photo in the preview ~3–20 ms.
 - **Session:** saved to IndexedDB every time a status changes (folder name, file names, sizes, lastModified, status, timestamps). No handles are stored. To resume, pick the same folder again; that click is the new permission grant. A status is restored only if every file in the group still matches name, size and lastModified.
 
 ## Deletion safety (`src/lib/deletion.ts`)

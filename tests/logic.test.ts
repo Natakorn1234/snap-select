@@ -179,3 +179,47 @@ describe('RAW embedded preview', () => {
     expect(out?.size).toBe(large.length);
   });
 });
+
+describe('fast thumbnails (EXIF)', () => {
+  /** Build a JPEG header with an APP1 Exif segment containing orientation + thumbnail. */
+  function exifJpeg(thumb: Uint8Array, orientation: number, little = false): Uint8Array<ArrayBuffer> {
+    const t: number[] = [];
+    const u16 = (v: number) => (little ? t.push(v & 255, (v >> 8) & 255) : t.push((v >> 8) & 255, v & 255));
+    const u32 = (v: number) => (little ? (u16(v & 0xffff), u16(v >>> 16)) : (u16(v >>> 16), u16(v & 0xffff)));
+    t.push(...(little ? [0x49, 0x49] : [0x4d, 0x4d])); u16(42); u32(8);
+    u16(1); u16(0x0112); u16(3); u32(1); u16(orientation); u16(0); u32(26);
+    u16(2); u16(0x0201); u16(4); u32(1); u32(56); u16(0x0202); u16(4); u32(1); u32(thumb.length); u32(0);
+    const exif = [0x45, 0x78, 0x69, 0x66, 0, 0, ...t, ...thumb];
+    return new Uint8Array([0xff, 0xd8, 0xff, 0xe1, ((exif.length + 2) >> 8) & 255, (exif.length + 2) & 255, ...exif, 0xff, 0xda, 0, 2, 1, 2, 3, 0xff, 0xd9]);
+  }
+  const thumb = new Uint8Array([0xff, 0xd8, ...new Uint8Array(4000).fill(7), 0xff, 0xd9]);
+
+  it('reads orientation and thumbnail location (big & little endian)', async () => {
+    const { parseJpegExif } = await import('@/lib/exif');
+    for (const le of [false, true]) {
+      const j = exifJpeg(thumb, 6, le);
+      const info = parseJpegExif(j)!;
+      expect(info.orientation).toBe(6);
+      expect([...j.subarray(info.thumb!.offset, info.thumb!.offset + info.thumb!.length)]).toEqual([...thumb]);
+    }
+  });
+  it('extracts the EXIF thumbnail without reading image data', async () => {
+    const { exifThumbnail } = await import('@/lib/thumbs');
+    const big = new Uint8Array(5_000_000); // pretend 5 MB of image data after the header
+    const j = exifJpeg(thumb, 1);
+    const blob = new Blob([j, big]);
+    const t = await exifThumbnail(blob);
+    expect(t?.blob.size).toBe(thumb.length);
+    expect(t?.orientation).toBe(1);
+  });
+  it('returns null for JPEGs without EXIF thumbnail (falls back to full decode)', async () => {
+    const { exifThumbnail } = await import('@/lib/thumbs');
+    expect(await exifThumbnail(new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0, 2, 1, 0xff, 0xd9])]))).toBeNull();
+  });
+  it('finds a RAW embedded preview located after the first window', async () => {
+    const body = new Uint8Array(50_000).fill(0x11);
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x02, ...body, 0xff, 0xd9]);
+    const raw = new Blob([new Uint8Array(1_000_000), jpeg]); // beyond 256 KB
+    expect((await extractEmbeddedJpeg(raw))?.size).toBe(jpeg.length);
+  });
+});

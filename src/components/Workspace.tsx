@@ -5,7 +5,7 @@ import Preview from './Preview';
 import Summary from './Summary';
 import { cullReducer, countStatuses } from '@/lib/cull';
 import { buildRecord, saveSession } from '@/lib/db';
-import { clearThumbCache } from '@/lib/thumbs';
+import { clearThumbCache, prefetchPreviews } from '@/lib/thumbs';
 import { CullStatus, PhotoGroup } from '@/lib/types';
 import type { LoadedFolder } from './Home';
 
@@ -31,6 +31,17 @@ export default function Workspace({ folder, onExit }: { folder: LoadedFolder; on
   );
   const idx = Math.min(current, items.length - 1);
   const counts = useMemo(() => countStatuses(groups.map((g) => g.id), state.statuses), [groups, state.statuses]);
+
+  // Prefetch full-size previews so Space and ←/→ feel instant. In the grid only the
+  // selected photo is warmed (to leave SD-card bandwidth for thumbnails).
+  const curGroup = items[idx];
+  useEffect(() => {
+    if (!curGroup) return;
+    const t = setTimeout(() => {
+      prefetchPreviews((preview ? [curGroup, items[idx + 1], items[idx - 1]] : [curGroup]).filter(Boolean).map((g) => g.preview));
+    }, preview ? 0 : 150);
+    return () => clearTimeout(t);
+  }, [curGroup, items, idx, preview]);
 
   // Autosave (debounced) to IndexedDB.
   useEffect(() => {

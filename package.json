@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "e2e": "next build && node e2e/run.cjs"
+    "e2e": "next build && node e2e/run.cjs",
+    "bench": "next build && node e2e/bench.cjs 40"
   },
   "dependencies": {
     "next": "^16.4.6",
