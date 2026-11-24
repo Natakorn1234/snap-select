@@ -4,6 +4,7 @@ import { displayableBlob } from '@/lib/thumbs';
 import { formatBytes } from '@/lib/files';
 import { CullStatus, PhotoGroup } from '@/lib/types';
 import { STATUS_BADGE, STATUS_LABEL } from './statusStyle';
+import ZoomImage from './ZoomImage';
 
 /** Full-size preview. Only ONE full image is held in memory; its object URL is revoked on change/close. */
 export default function Preview({ group, status, index, total, onClose }: { group: PhotoGroup; status: CullStatus; index: number; total: number; onClose: () => void }) {
@@ -27,8 +28,8 @@ export default function Preview({ group, status, index, total, onClose }: { grou
   }, [group]);
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-black/95" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-2 text-sm" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-40 flex flex-col bg-black/95">
+      <div className="flex items-center justify-between px-4 py-2 text-sm">
         <div className="flex items-center gap-3">
           <span className="font-medium">{group.baseName}</span>
           <span className="text-neutral-400">{group.files.map((f) => `${f.name} (${formatBytes(f.size)})`).join(' · ')}</span>
@@ -39,12 +40,12 @@ export default function Preview({ group, status, index, total, onClose }: { grou
           <button onClick={onClose} className="rounded border border-neutral-700 px-2 py-0.5">Esc</button>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center p-2">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
         {error ? <p className="text-red-400">{error}</p>
-          : url ? <img src={url} alt={group.baseName} className="max-h-full max-w-full object-contain" /> // eslint-disable-line @next/next/no-img-element
+          : url ? <ZoomImage src={url} alt={group.baseName} />
           : <span className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-200" />}
       </div>
-      <div className="pb-2 text-center text-xs text-neutral-500">1 Keep · 2 Maybe · X Reject · ←/→ Navigate · Ctrl+Z Undo · Space/Esc Close</div>
+      <div className="pb-2 text-center text-xs text-neutral-500">1 Keep · 2 Maybe · X Reject · ←/→ Navigate · Wheel/+/− zoom · Z or double-click 100% · 0 fit · drag to pan · Ctrl+Z Undo · Space/Esc Close</div>
     </div>
   );
 }

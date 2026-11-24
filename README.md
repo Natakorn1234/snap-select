@@ -19,6 +19,7 @@ Requires **Chrome or Edge on desktop** (Windows/macOS/Linux) over **HTTPS** or `
 
 1. Insert the SD card and click **Select Folder**. Choose the folder that holds the images, usually `DCIM\100XXXXX`. Subfolders are not read.
 2. Cull with the keyboard: `1` Keep · `2` Maybe · `X` Reject · `←/→` (and `↑/↓` in the grid) to move · `Space` preview · `Esc` close · `Ctrl+Z` undo.
+   In the preview: mouse wheel or `+`/`-` to zoom toward the cursor, drag to pan, `Z` or double-click for 100% (actual pixels), `0` to fit.
 3. Click **Finish →** to see the summary and the list of files to be deleted. Then **Finish & Delete Rejected**, tick the checkbox, and allow write access when the browser asks.
 
 Unrated photos are never deleted.

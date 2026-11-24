@@ -68,6 +68,23 @@ const assert = (c, m) => { if (!c) throw new Error('ASSERT: ' + m); console.log(
   await page.keyboard.press(' ');
   await page.waitForSelector('.fixed img');
   assert(true, 'space opens full preview');
+  const scale = () => page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.fixed img')).transform).a);
+  await page.mouse.move(640, 400);
+  await page.mouse.wheel(0, -600);
+  await page.waitForTimeout(200);
+  assert((await scale()) > 1.5, 'wheel zooms in (scale ' + (await scale()).toFixed(2) + ')');
+  await page.mouse.move(640, 400); await page.mouse.down(); await page.mouse.move(540, 350, { steps: 5 }); await page.mouse.up();
+  const tx = await page.evaluate(() => new DOMMatrix(getComputedStyle(document.querySelector('.fixed img')).transform).e);
+  assert(tx < -50, 'drag pans the zoomed image');
+  assert((await page.textContent('header')) !== null && (await page.$('.fixed img')) !== null, 'drag does not close preview');
+  await page.keyboard.press('0'); await page.waitForTimeout(200);
+  assert((await scale()) === 1, '0 resets to fit');
+  await page.keyboard.press('z'); await page.waitForTimeout(200);
+  assert((await scale()) > 1, 'Z zooms to 100%');
+  const name1 = await page.textContent('.fixed span.font-medium');
+  await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(500);
+  assert((await page.textContent('.fixed span.font-medium')) !== name1 && (await scale()) === 1, 'zoom resets when moving to another photo');
+  await page.keyboard.press('ArrowRight'); await page.waitForTimeout(300);
   await page.keyboard.press('Escape');
   assert((await page.$('.fixed img')) === null, 'escape closes preview');
 
